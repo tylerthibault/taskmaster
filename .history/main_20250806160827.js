@@ -1581,8 +1581,6 @@ class TaskMasterPlugin extends Plugin {
 		
 		return false;
 	}
-
-	debugTestButtonProcessing() {
 		this.logger.log('=== DEBUG: Testing Button Processing ===');
 		this.logger.log('Current settings:', this.settings);
 		this.logger.log('Default state group:', this.settings.defaultStateGroup);
@@ -1650,6 +1648,7 @@ description: This is a test button from debug command`;
 			const codeBlockContent = `button-id: ${buttonId}
 state: ${firstState.id}
 group: ${selectedGroup}
+label: Task Button
 description: Click to change state`;
 
 			const codeBlockSyntax = `\`\`\`taskmaster\n${codeBlockContent}\n\`\`\``;

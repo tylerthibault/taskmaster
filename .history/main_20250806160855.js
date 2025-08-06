@@ -1650,6 +1650,7 @@ description: This is a test button from debug command`;
 			const codeBlockContent = `button-id: ${buttonId}
 state: ${firstState.id}
 group: ${selectedGroup}
+label: Task Button
 description: Click to change state`;
 
 			const codeBlockSyntax = `\`\`\`taskmaster\n${codeBlockContent}\n\`\`\``;

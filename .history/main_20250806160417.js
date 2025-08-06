@@ -126,6 +126,7 @@ class MultiStateButtonProcessor {
 				buttonId: config['button-id'] || config['id'],
 				state: config['state'] || config['current-state'] || 'todo',
 				group: config['group'] || config['state-group'] || this.settings.defaultStateGroup,
+				label: config['label'] || config['name'] || null,
 				description: config['description'] || config['desc'] || null
 			};
 
@@ -209,7 +210,7 @@ class MultiStateButtonProcessor {
 				
 				// Create a temporary container for the button
 				const tempContainer = document.createElement('div');
-				this.createButton(tempContainer, buttonId, currentState, ctx, null);
+				this.createButton(tempContainer, buttonId, currentState, ctx);
 				
 				if (tempContainer.firstChild) {
 					const buttonHTML = tempContainer.innerHTML;
@@ -300,7 +301,7 @@ class MultiStateButtonProcessor {
 			}
 			
 			this.logger.debug('Creating button for:', { buttonId, currentState });
-			this.createButton(fragment, buttonId, currentState, ctx, null);
+			this.createButton(fragment, buttonId, currentState, ctx);
 			
 			lastIndex = match.index + fullMatch.length;
 		}
@@ -365,8 +366,9 @@ class MultiStateButtonProcessor {
 		
 		const button = document.createElement('button');
 		
-		// Always use the state name for button text
-		button.textContent = state.name;
+		// Use custom label if provided, otherwise use state name
+		const buttonLabel = extendedConfig?.label || state.name;
+		button.textContent = buttonLabel;
 		
 		button.className = 'taskmaster-button';
 		if (extendedConfig) {
@@ -429,7 +431,8 @@ class MultiStateButtonProcessor {
 			}
 			
 			// Update button appearance
-			button.textContent = nextState.name;
+			const buttonLabel = extendedConfig?.label || nextState.name;
+			button.textContent = buttonLabel;
 			button.setAttribute('data-state', nextState.id);
 			button.style.backgroundColor = nextState.color;
 			button.style.color = this.getContrastColor(nextState.color);
@@ -1464,7 +1467,7 @@ class TaskMasterPlugin extends Plugin {
 			console.log('[TaskMaster] INLINE PROCESSOR VERSION - Load complete!');
 			
 			// Show success notice
-			new Notice('TaskMaster loaded! Supports inline {{}} and ```taskmaster code blocks');
+			new Notice('TaskMaster inline processor version loaded!');
 			
 		} catch (error) {
 			console.error('[TaskMaster] FATAL ERROR during load:', error);
@@ -1480,12 +1483,21 @@ class TaskMasterPlugin extends Plugin {
 	}
 
 	addCommands() {
-		// Single smart command to insert multi-state button
+		// Command to insert multi-state button (inline)
 		this.addCommand({
 			id: 'insert-multi-state-button',
-			name: 'Insert Multi-State Button',
+			name: 'Insert Multi-State Button (Inline)',
 			editorCallback: (editor) => {
-				this.insertMultiStateButtonSmart(editor);
+				this.insertMultiStateButton(editor);
+			}
+		});
+
+		// Command to insert multi-state button (code block)
+		this.addCommand({
+			id: 'insert-multi-state-button-codeblock',
+			name: 'Insert Multi-State Button (Code Block)',
+			editorCallback: (editor) => {
+				this.insertMultiStateButtonCodeBlock(editor);
 			}
 		});
 
@@ -1527,61 +1539,6 @@ class TaskMasterPlugin extends Plugin {
 		});
 	}
 
-	async insertMultiStateButtonSmart(editor) {
-		try {
-			// Detect if we're in a table context
-			const cursor = editor.getCursor();
-			const line = editor.getLine(cursor.line);
-			const isInTable = this.isInTableContext(editor, cursor);
-			
-			this.logger.debug('Smart insert context detection:', {
-				line: line,
-				isInTable: isInTable,
-				cursor: cursor
-			});
-
-			if (isInTable) {
-				this.logger.debug('Detected table context, using inline syntax');
-				await this.insertMultiStateButton(editor);
-			} else {
-				this.logger.debug('Detected regular context, using code block syntax');
-				await this.insertMultiStateButtonCodeBlock(editor);
-			}
-			
-		} catch (error) {
-			this.logger.error('Error in smart button insertion:', error);
-			// Fallback to inline if there's any error
-			await this.insertMultiStateButton(editor);
-		}
-	}
-
-	isInTableContext(editor, cursor) {
-		// Check the current line and surrounding lines for table indicators
-		const currentLine = editor.getLine(cursor.line).trim();
-		
-		// Check if current line contains pipe characters (table indicator)
-		if (currentLine.includes('|')) {
-			return true;
-		}
-		
-		// Check previous and next lines for table context
-		const prevLine = cursor.line > 0 ? editor.getLine(cursor.line - 1).trim() : '';
-		const nextLine = cursor.line < editor.lineCount() - 1 ? editor.getLine(cursor.line + 1).trim() : '';
-		
-		// Look for table separator lines (like |---|---|)
-		const tableSeparatorPattern = /^\|?[\s\-\|:]+\|?$/;
-		if (tableSeparatorPattern.test(prevLine) || tableSeparatorPattern.test(nextLine)) {
-			return true;
-		}
-		
-		// Check if previous or next lines have pipe characters
-		if (prevLine.includes('|') || nextLine.includes('|')) {
-			return true;
-		}
-		
-		return false;
-	}
-
 	debugTestButtonProcessing() {
 		this.logger.log('=== DEBUG: Testing Button Processing ===');
 		this.logger.log('Current settings:', this.settings);
@@ -1594,75 +1551,15 @@ class TaskMasterPlugin extends Plugin {
 		const match = regex.exec(testText);
 		this.logger.log('Regex test on "' + testText + '":', match);
 		
-		// Test inline processor
+		// Test processor directly
 		const testDiv = document.createElement('div');
 		testDiv.textContent = testText;
 		this.logger.log('Test div created:', testDiv);
 		
 		this.multiStateProcessor.processInlineButtons(testDiv, { sourcePath: 'debug-test' });
-		this.logger.log('Test div after inline processing:', testDiv);
-		
-		// Test code block processor
-		const testCodeBlock = `button-id: debug-test
-state: todo
-group: default
-label: Debug Test Button
-description: This is a test button from debug command`;
-
-		const testCodeDiv = document.createElement('div');
-		this.logger.log('Testing code block processor with:', testCodeBlock);
-		
-		this.multiStateProcessor.processCodeBlock(testCodeBlock, testCodeDiv, { sourcePath: 'debug-test' });
-		this.logger.log('Test code div after processing:', testCodeDiv);
+		this.logger.log('Test div after processing:', testDiv);
 		
 		new Notice('Debug test complete - check console for details');
-	}
-
-	async insertMultiStateButtonCodeBlock(editor) {
-		try {
-			// Get available state groups
-			const stateGroups = Object.keys(this.settings.stateGroups);
-			if (stateGroups.length === 0) {
-				new Notice('No state groups available. Create one in settings first.');
-				return;
-			}
-
-			// If only one group, use it directly
-			let selectedGroup = this.settings.defaultStateGroup;
-			if (stateGroups.length > 1) {
-				selectedGroup = await this.selectStateGroup(stateGroups);
-				if (!selectedGroup) return; // User cancelled
-			}
-
-			// Generate unique button ID
-			const buttonId = this.generateButtonId();
-			
-			// Get first state from selected group
-			const groupData = this.settings.stateGroups[selectedGroup];
-			const firstState = groupData.states[0];
-			
-			if (!firstState) {
-				new Notice('Selected state group has no states. Add states in settings first.');
-				return;
-			}
-
-			// Create code block syntax
-			const codeBlockContent = `button-id: ${buttonId}
-state: ${firstState.id}
-group: ${selectedGroup}
-description: Click to change state`;
-
-			const codeBlockSyntax = `\`\`\`taskmaster\n${codeBlockContent}\n\`\`\``;
-			
-			// Insert at cursor
-			editor.replaceSelection(codeBlockSyntax);
-			
-			new Notice(`Multi-state button code block inserted with ID: ${buttonId}`);
-			
-		} catch (error) {
-			this.logger.error('Error inserting multi-state button code block:', error);
-			new Notice('Failed to insert multi-state button code block');
-		}
 	}
 
 	async insertMultiStateButton(editor) {

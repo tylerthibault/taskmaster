@@ -126,6 +126,7 @@ class MultiStateButtonProcessor {
 				buttonId: config['button-id'] || config['id'],
 				state: config['state'] || config['current-state'] || 'todo',
 				group: config['group'] || config['state-group'] || this.settings.defaultStateGroup,
+				label: config['label'] || config['name'] || null,
 				description: config['description'] || config['desc'] || null
 			};
 
@@ -300,7 +301,7 @@ class MultiStateButtonProcessor {
 			}
 			
 			this.logger.debug('Creating button for:', { buttonId, currentState });
-			this.createButton(fragment, buttonId, currentState, ctx, null);
+			this.createButton(fragment, buttonId, currentState, ctx);
 			
 			lastIndex = match.index + fullMatch.length;
 		}
@@ -365,8 +366,9 @@ class MultiStateButtonProcessor {
 		
 		const button = document.createElement('button');
 		
-		// Always use the state name for button text
-		button.textContent = state.name;
+		// Use custom label if provided, otherwise use state name
+		const buttonLabel = extendedConfig?.label || state.name;
+		button.textContent = buttonLabel;
 		
 		button.className = 'taskmaster-button';
 		if (extendedConfig) {
@@ -429,7 +431,8 @@ class MultiStateButtonProcessor {
 			}
 			
 			// Update button appearance
-			button.textContent = nextState.name;
+			const buttonLabel = extendedConfig?.label || nextState.name;
+			button.textContent = buttonLabel;
 			button.setAttribute('data-state', nextState.id);
 			button.style.backgroundColor = nextState.color;
 			button.style.color = this.getContrastColor(nextState.color);
@@ -1480,12 +1483,21 @@ class TaskMasterPlugin extends Plugin {
 	}
 
 	addCommands() {
-		// Single smart command to insert multi-state button
+		// Command to insert multi-state button (inline)
 		this.addCommand({
 			id: 'insert-multi-state-button',
-			name: 'Insert Multi-State Button',
+			name: 'Insert Multi-State Button (Inline)',
 			editorCallback: (editor) => {
-				this.insertMultiStateButtonSmart(editor);
+				this.insertMultiStateButton(editor);
+			}
+		});
+
+		// Command to insert multi-state button (code block)
+		this.addCommand({
+			id: 'insert-multi-state-button-codeblock',
+			name: 'Insert Multi-State Button (Code Block)',
+			editorCallback: (editor) => {
+				this.insertMultiStateButtonCodeBlock(editor);
 			}
 		});
 
@@ -1525,61 +1537,6 @@ class TaskMasterPlugin extends Plugin {
 				this.debugTestButtonProcessing();
 			}
 		});
-	}
-
-	async insertMultiStateButtonSmart(editor) {
-		try {
-			// Detect if we're in a table context
-			const cursor = editor.getCursor();
-			const line = editor.getLine(cursor.line);
-			const isInTable = this.isInTableContext(editor, cursor);
-			
-			this.logger.debug('Smart insert context detection:', {
-				line: line,
-				isInTable: isInTable,
-				cursor: cursor
-			});
-
-			if (isInTable) {
-				this.logger.debug('Detected table context, using inline syntax');
-				await this.insertMultiStateButton(editor);
-			} else {
-				this.logger.debug('Detected regular context, using code block syntax');
-				await this.insertMultiStateButtonCodeBlock(editor);
-			}
-			
-		} catch (error) {
-			this.logger.error('Error in smart button insertion:', error);
-			// Fallback to inline if there's any error
-			await this.insertMultiStateButton(editor);
-		}
-	}
-
-	isInTableContext(editor, cursor) {
-		// Check the current line and surrounding lines for table indicators
-		const currentLine = editor.getLine(cursor.line).trim();
-		
-		// Check if current line contains pipe characters (table indicator)
-		if (currentLine.includes('|')) {
-			return true;
-		}
-		
-		// Check previous and next lines for table context
-		const prevLine = cursor.line > 0 ? editor.getLine(cursor.line - 1).trim() : '';
-		const nextLine = cursor.line < editor.lineCount() - 1 ? editor.getLine(cursor.line + 1).trim() : '';
-		
-		// Look for table separator lines (like |---|---|)
-		const tableSeparatorPattern = /^\|?[\s\-\|:]+\|?$/;
-		if (tableSeparatorPattern.test(prevLine) || tableSeparatorPattern.test(nextLine)) {
-			return true;
-		}
-		
-		// Check if previous or next lines have pipe characters
-		if (prevLine.includes('|') || nextLine.includes('|')) {
-			return true;
-		}
-		
-		return false;
 	}
 
 	debugTestButtonProcessing() {
@@ -1650,6 +1607,7 @@ description: This is a test button from debug command`;
 			const codeBlockContent = `button-id: ${buttonId}
 state: ${firstState.id}
 group: ${selectedGroup}
+label: Task Button
 description: Click to change state`;
 
 			const codeBlockSyntax = `\`\`\`taskmaster\n${codeBlockContent}\n\`\`\``;
