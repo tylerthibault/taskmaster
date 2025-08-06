@@ -1,0 +1,79 @@
+INSTRUCTIONS: When using the TODO list and checking things off update the LESSONS_LEARNED.md file with how you fixed the problem. Correlate the numbers so if in the TODO file it is 1.1 then in the LESSONS_LEARNED file it should also be 1.1 so that we can see the steps you took to fix the problem. 
+
+# TaskMaster TODO & Feature List
+
+## 1. Core Features
+- [x] 0.1 set up logging throughout the app that we can turn on in order to debug. 
+- [x] 0.2 Have all elements render in both read and edit modes. 
+
+- [x] 1.1 Multi-State Task Toggles  
+  - [x] 1.1.1 Replace standard checkboxes with customizable multi-state toggles  
+  - [x] 1.1.2 Settings 
+        - [x] 1.1.2.1 Ability to create groups that have different states order
+        - [x] 1.1.2.2 Ability to set a color with a color picker for a name for a state that then gets applied to all of the buttons with that state when they are on that state. 
+  - [x] 1.1.3 Inline state cycling (click to change state)  
+    - [x] 1.1.3.1 The state can be stored like {{multi-state-button:button_id:status}} or something like that
+    - [x] 1.1.3.2 The multi-state-button renders properly on the file
+    - [x] 1.1.3.3 This needs to be able to work inside and outside a table. 
+  - [x] 1.1.4 add a command on the command pallet to create a multi-state-button. 
+
+
+- [x] 1.2 People & Assignment Management  
+  - [x] 1.2.1 Add/edit/delete people (name, email, avatar, role) in settings  
+  - [x] 1.2.2 Assign one or more people to tasks/projects (dropdown or @mention)  
+  - [x] 1.2.3 Display assigned users inline on tasks/projects  
+  - [x] 1.2.4 Filter/group tasks by assignee  
+
+- [x] 1.3 Project & Task Structure  
+  - [x] 1.3.1 Collapsible sections for phases, milestones, or epics  
+  - [x] 1.3.2 Support markdown-based boards, lists, and outlines  
+  - [x] 1.3.3 Toggle between list, Kanban, and calendar views  
+
+- [ ] 1.4 Integrated Time Tracking  
+  - [ ] 1.4.1 Start/stop timer on any task or project inline  
+  - [ ] 1.4.2 Log multiple time entries per task/person, with session notes  
+  - [ ] 1.4.3 View time totals per task, project, person, or vault  
+  - [ ] 1.4.4 Compare actual vs. estimated time  
+
+- [ ] 1.5 Progress Visualization  
+  - [ ] 1.5.1 Progress bars for projects (task completion)  
+  - [ ] 1.5.2 Visual breakdowns by state, assignee, or time  
+  - [ ] 1.5.3 Dashboard view for project health  
+
+- [ ] 1.6 Daily/Weekly Logs & Reporting  
+  - [ ] 1.6.1 Auto/manual summaries of time and progress for any period  
+  - [ ] 1.6.2 Option to inject logs into daily notes  
+  - [ ] 1.6.3 Export reports as markdown or CSV  
+
+- [ ] 1.7 Customizable Settings  
+  - [ ] 1.7.1 Manage people and states in settings panel  
+  - [ ] 1.7.2 Persist settings in vault plugin data  
+  - [ ] 1.7.3 Set state, color, and role defaults  
+
+---
+
+## 2. Planned Enhancements
+
+- [ ] 2.1 Quick Add Modal  
+  - [ ] 2.1.1 Add new tasks, people, or states from anywhere in Obsidian  
+
+- [ ] 2.2 Drag & Drop Reordering  
+  - [ ] 2.2.1 Rearrange tasks or project sections visually  
+
+- [ ] 2.3 Bulk Edit  
+  - [ ] 2.3.1 Multi-select for batch state/assignee/time changes  
+
+- [ ] 2.4 Template Support  
+  - [ ] 2.4.1 Create reusable project/task templates  
+
+- [ ] 2.5 Vault-wide Search & Filter  
+  - [ ] 2.5.1 Global search/filter by state, person, time, or keyword  
+
+---
+
+## 3. Stretch Goals / Future Ideas
+
+- [ ] 3.1 Notifications/Reminders  
+- [ ] 3.2 External Integration (Jira, Trello, etc.)  
+- [ ] 3.3 Advanced Automation (Zapier, IFTTT)  
+- [ ] 3.4 Mobile UI Optimizations  

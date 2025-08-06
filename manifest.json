@@ -1,0 +1,11 @@
+{
+  "id": "taskmaster",
+  "name": "TaskMaster",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Project Planner, Task Tracker, Time Logger & Assignment Manager for Obsidian",
+  "author": "TaskMaster Team",
+  "authorUrl": "https://github.com/taskmaster-team",
+  "fundingUrl": "",
+  "isDesktopOnly": false
+}

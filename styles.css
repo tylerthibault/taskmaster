@@ -1,0 +1,439 @@
+/* TaskMaster Plugin Styles */
+
+/* Multi-State Button */
+.taskmaster-multi-state-button {
+  font-family: var(--font-interface);
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: transparent;
+}
+
+.taskmaster-multi-state-button:hover {
+  background-color: var(--background-modifier-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Multi-State Buttons */
+.taskmaster-multi-state-button {
+  font-family: var(--font-interface);
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0 4px;
+  background-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.taskmaster-multi-state-button:hover {
+  background-color: var(--background-modifier-hover) !important;
+  transform: translateY(-1px);
+}
+
+/* Collapsible Sections */
+.taskmaster-collapsible {
+  position: relative;
+}
+
+.taskmaster-collapse-toggle {
+  margin-right: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--font-monospace);
+  color: var(--text-muted);
+  font-size: 0.8em;
+  transition: color 0.2s ease;
+}
+
+.taskmaster-collapse-toggle:hover {
+  color: var(--text-accent);
+}
+
+/* Project Views */
+.taskmaster-project-view {
+  margin: 16px 0;
+}
+
+.taskmaster-view-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.taskmaster-view-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.taskmaster-view-button.active {
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+}
+
+.taskmaster-view-button:hover:not(.active) {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* Kanban Board View */
+.taskmaster-kanban-board {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 16px 0;
+  min-height: 400px;
+}
+
+.taskmaster-kanban-column {
+  flex: 0 0 280px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 16px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.taskmaster-kanban-column h3 {
+  margin: 0 0 16px 0;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.taskmaster-kanban-item {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.taskmaster-kanban-item:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Calendar View */
+.taskmaster-calendar-view {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--background-modifier-border);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.taskmaster-calendar-day {
+  background: var(--background-primary);
+  padding: 8px;
+  min-height: 100px;
+  position: relative;
+}
+
+.taskmaster-calendar-day-number {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.taskmaster-calendar-task {
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.taskmaster-state-button {
+  font-family: var(--font-interface);
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.taskmaster-state-button:hover {
+  background-color: var(--background-modifier-hover) !important;
+  transform: translateY(-1px);
+}
+
+/* Task Enhancements */
+.taskmaster-assignments {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+
+.taskmaster-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+
+/* Settings Page */
+.taskmaster-states-container,
+.taskmaster-people-container,
+.taskmaster-groups-container {
+  margin: 16px 0;
+}
+
+.taskmaster-state-item,
+.taskmaster-person-item,
+.taskmaster-group-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin: 8px 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+  transition: all 0.2s ease;
+}
+
+.taskmaster-state-item:hover,
+.taskmaster-person-item:hover,
+.taskmaster-group-item:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+}
+
+.taskmaster-state-order-container {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.taskmaster-state-order-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  margin: 4px 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-secondary);
+  cursor: move;
+  transition: all 0.2s ease;
+}
+
+.taskmaster-state-order-item:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--color-accent);
+}
+
+.taskmaster-state-item button,
+.taskmaster-person-item button {
+  padding: 4px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.taskmaster-state-item button:hover,
+.taskmaster-person-item button:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+}
+
+/* Modal Styles */
+.modal .taskmaster-form-row {
+  display: flex;
+  align-items: center;
+  margin: 16px 0;
+  gap: 12px;
+}
+
+.modal .taskmaster-form-label {
+  min-width: 100px;
+  font-weight: 500;
+}
+
+.modal .taskmaster-form-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.modal .taskmaster-color-preview {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  margin-left: 8px;
+}
+
+/* Dashboard Styles */
+.taskmaster-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.taskmaster-dashboard-card {
+  padding: 20px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.taskmaster-dashboard-card h3 {
+  margin: 0 0 12px 0;
+  color: var(--text-accent);
+}
+
+.taskmaster-dashboard-stat {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+/* Project Templates */
+.taskmaster-kanban-column {
+  flex: 1;
+  min-width: 250px;
+  margin: 0 8px;
+  padding: 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.taskmaster-kanban-column h3 {
+  margin: 0 0 16px 0;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Progress Indicators */
+.taskmaster-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.taskmaster-progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+}
+
+/* Time Tracking */
+.taskmaster-timer-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 500;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Assignment Tags */
+.taskmaster-assignment-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  border-radius: 12px;
+  font-size: 10px;
+  margin: 0 2px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .taskmaster-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .taskmaster-state-item,
+  .taskmaster-person-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .taskmaster-state-item > div:last-child,
+  .taskmaster-person-item > div:last-child {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+/* Dark Theme Adjustments */
+.theme-dark .taskmaster-state-button {
+  border-color: var(--background-modifier-border);
+}
+
+.theme-dark .taskmaster-dashboard-card {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Light Theme Adjustments */
+.theme-light .taskmaster-dashboard-card {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Print Styles */
+@media print {
+  .taskmaster-state-button,
+  .taskmaster-timer-active {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

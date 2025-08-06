@@ -1,0 +1,47 @@
+{
+  "name": "taskmaster-obsidian",
+  "version": "1.0.0",
+  "description": "Project Planner, Task Tracker, Time Logger & Assignment Manager for Obsidian",
+  "main": "main.js",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --watch",
+    "test": "echo \"No tests specified\" && exit 0",
+    "lint": "eslint main.js settings.js",
+    "format": "prettier --write \"*.js\" \"*.md\"",
+    "release": "npm run build && npm run lint",
+    "version": "node scripts/version-bump.js"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "task-management",
+    "project-planning",
+    "time-tracking",
+    "productivity"
+  ],
+  "author": "TaskMaster Team",
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.20.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/taskmaster-team/taskmaster-obsidian.git"
+  },
+  "bugs": {
+    "url": "https://github.com/taskmaster-team/taskmaster-obsidian/issues"
+  },
+  "homepage": "https://github.com/taskmaster-team/taskmaster-obsidian#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "files": [
+    "main.js",
+    "settings.js",
+    "styles.css",
+    "manifest.json"
+  ]
+}
