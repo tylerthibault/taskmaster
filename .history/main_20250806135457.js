@@ -270,61 +270,18 @@ class TaskMasterSettingTab extends PluginSettingTab {
 		// State Groups Section
 		containerEl.createEl('h3', { text: 'State Groups' });
 		
-		// Summary of current state groups
-		const summaryDiv = containerEl.createDiv('taskmaster-groups-summary');
-		this.refreshGroupsSummary(summaryDiv);
-		
-		// Manage state groups button
+		// Add new state group button
 		new Setting(containerEl)
-			.setName('Manage State Groups')
-			.setDesc('Open the state groups manager to create, edit, and delete state groups and their states')
+			.setName('Add New State Group')
+			.setDesc('Create a new group of states for your buttons')
 			.addButton(button => button
-				.setButtonText('Open Manager')
-				.setCta()
+				.setButtonText('+ Add Group')
 				.onClick(() => {
-					this.openStateGroupsManager();
+					this.createNewStateGroup();
 				}));
-
-		// Other settings sections can go here...
-		containerEl.createEl('h3', { text: 'Other Settings' });
-		containerEl.createEl('p', { 
-			text: 'Additional TaskMaster settings will appear here as features are developed.',
-			cls: 'setting-item-description'
-		});
-	}
-
-	refreshGroupsSummary(container) {
-		container.empty();
 		
-		const groupCount = Object.keys(this.plugin.settings.stateGroups).length;
-		const totalStates = Object.values(this.plugin.settings.stateGroups)
-			.reduce((total, group) => total + group.states.length, 0);
-		
-		const summaryEl = container.createDiv('taskmaster-summary');
-		summaryEl.style.cssText = 'padding: 12px; background: var(--background-secondary); border-radius: 6px; margin: 8px 0;';
-		
-		summaryEl.createEl('div', { 
-			text: `${groupCount} state group${groupCount !== 1 ? 's' : ''}, ${totalStates} total state${totalStates !== 1 ? 's' : ''}`,
-			cls: 'setting-item-name'
-		});
-		
-		// List group names
-		const groupNames = Object.values(this.plugin.settings.stateGroups).map(g => g.name);
-		summaryEl.createEl('div', {
-			text: `Groups: ${groupNames.join(', ')}`,
-			cls: 'setting-item-description'
-		});
-	}
-
-	openStateGroupsManager() {
-		const modal = new StateGroupsManagerModal(this.plugin.app, this.plugin, () => {
-			// Refresh summary when modal closes
-			const summaryDiv = this.containerEl.querySelector('.taskmaster-groups-summary');
-			if (summaryDiv) {
-				this.refreshGroupsSummary(summaryDiv);
-			}
-		});
-		modal.open();
+		const groupsContainer = containerEl.createDiv('taskmaster-state-groups-container');
+		this.refreshStateGroupsList(groupsContainer);
 	}
 
 	refreshStateGroupsList(container) {
@@ -348,14 +305,7 @@ class TaskMasterSettingTab extends PluginSettingTab {
 			groupActions.createEl('button', { 
 				text: 'Delete', 
 				cls: 'mod-warning' 
-			}).onclick = async () => {
-				try {
-					await this.deleteStateGroup(groupId);
-				} catch (error) {
-					console.error('[TaskMaster] Error in deleteStateGroup:', error);
-					new Notice('Error deleting state group: ' + error.message);
-				}
-			};
+			}).onclick = () => this.deleteStateGroup(groupId);
 			
 			const statesDiv = groupDiv.createDiv('taskmaster-states-list');
 			
@@ -395,32 +345,19 @@ class TaskMasterSettingTab extends PluginSettingTab {
 				stateActions.createEl('button', { 
 					text: 'Delete',
 					cls: 'mod-small mod-warning'
-				}).onclick = async () => {
-					try {
-						await this.deleteState(groupId, index);
-					} catch (error) {
-						console.error('[TaskMaster] Error in deleteState:', error);
-						new Notice('Error deleting state: ' + error.message);
-					}
-				};
+				}).onclick = () => this.deleteState(groupId, index);
 			});
 		});
 	}
 
 	async createNewStateGroup() {
-		console.log('[TaskMaster] createNewStateGroup called');
 		const groupName = await this.promptForText('Enter group name:', 'New Group');
-		if (!groupName) {
-			console.log('[TaskMaster] User cancelled group creation');
-			return;
-		}
+		if (!groupName) return;
 		
-		console.log('[TaskMaster] Creating group with name:', groupName);
 		const groupId = groupName.toLowerCase().replace(/[^a-z0-9]/g, '-');
 		
 		// Check if group already exists
 		if (this.plugin.settings.stateGroups[groupId]) {
-			console.log('[TaskMaster] Group already exists:', groupId);
 			new Notice('A group with this name already exists!');
 			return;
 		}
@@ -434,9 +371,7 @@ class TaskMasterSettingTab extends PluginSettingTab {
 			]
 		};
 		
-		console.log('[TaskMaster] Group created, saving settings...', this.plugin.settings.stateGroups);
 		await this.plugin.saveSettings();
-		console.log('[TaskMaster] Settings saved, refreshing display...');
 		this.display(); // Refresh the interface
 		new Notice(`State group "${groupName}" created!`);
 	}
@@ -453,11 +388,8 @@ class TaskMasterSettingTab extends PluginSettingTab {
 	}
 
 	async deleteStateGroup(groupId) {
-		console.log('[TaskMaster] deleteStateGroup called for:', groupId);
 		const groupData = this.plugin.settings.stateGroups[groupId];
 		const confirmed = await this.confirmAction(`Delete group "${groupData.name}"?`, 'This will permanently delete the group and all its states.');
-		console.log('[TaskMaster] User confirmation result:', confirmed);
-		
 		if (!confirmed) return;
 		
 		// Don't allow deleting the default group if it's the only one
@@ -466,7 +398,6 @@ class TaskMasterSettingTab extends PluginSettingTab {
 			return;
 		}
 		
-		console.log('[TaskMaster] Deleting group:', groupId);
 		delete this.plugin.settings.stateGroups[groupId];
 		
 		// If we deleted the default group, set a new default
@@ -522,451 +453,6 @@ class TaskMasterSettingTab extends PluginSettingTab {
 	}
 
 	async deleteState(groupId, stateIndex) {
-		console.log('[TaskMaster] deleteState called for group:', groupId, 'state index:', stateIndex);
-		const group = this.plugin.settings.stateGroups[groupId];
-		const state = group.states[stateIndex];
-		
-		// Don't allow deleting the last state
-		if (group.states.length === 1) {
-			new Notice('Cannot delete the last state in a group!');
-			return;
-		}
-		
-		const confirmed = await this.confirmAction(`Delete state "${state.name}"?`, 'This action cannot be undone.');
-		console.log('[TaskMaster] User confirmation result:', confirmed);
-		
-		if (!confirmed) return;
-		
-		console.log('[TaskMaster] Deleting state:', state.name, 'from group:', groupId);
-		group.states.splice(stateIndex, 1);
-		
-		// Reorder remaining states
-		group.states.forEach((s, i) => s.order = i);
-		
-		await this.plugin.saveSettings();
-		this.display();
-		new Notice('State deleted!');
-	}
-
-	async promptForText(message, defaultValue = '') {
-		console.log('[TaskMaster] promptForText called with:', message, defaultValue);
-		return new Promise((resolve) => {
-			// Import Modal from obsidian
-			const { Modal } = require('obsidian');
-			
-			class TextPromptModal extends Modal {
-				constructor(app, message, defaultValue, resolve) {
-					super(app);
-					this.message = message;
-					this.defaultValue = defaultValue;
-					this.resolve = resolve;
-					this.submitted = false;
-					console.log('[TaskMaster] TextPromptModal created');
-				}
-				
-				onOpen() {
-					console.log('[TaskMaster] TextPromptModal onOpen called');
-					const { contentEl } = this;
-					contentEl.empty();
-					
-					contentEl.createEl('h3', { text: this.message });
-					
-					this.inputEl = contentEl.createEl('input', { 
-						type: 'text', 
-						value: this.defaultValue 
-					});
-					this.inputEl.style.cssText = 'width: 100%; margin: 10px 0; padding: 8px; font-size: 14px;';
-					
-					const buttonDiv = contentEl.createDiv();
-					buttonDiv.style.cssText = 'display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px;';
-					
-					const cancelBtn = buttonDiv.createEl('button', { text: 'Cancel' });
-					cancelBtn.onclick = () => {
-						console.log('[TaskMaster] Cancel clicked');
-						this.close();
-					};
-					
-					const okBtn = buttonDiv.createEl('button', { text: 'OK', cls: 'mod-cta' });
-					okBtn.onclick = () => {
-						console.log('[TaskMaster] OK clicked');
-						this.submit();
-					};
-					
-					this.inputEl.addEventListener('keydown', (e) => {
-						if (e.key === 'Enter') {
-							e.preventDefault();
-							console.log('[TaskMaster] Enter pressed');
-							this.submit();
-						} else if (e.key === 'Escape') {
-							e.preventDefault();
-							console.log('[TaskMaster] Escape pressed');
-							this.close();
-						}
-					});
-					
-					// Focus and select text after a brief delay
-					setTimeout(() => {
-						this.inputEl.focus();
-						this.inputEl.select();
-					}, 10);
-				}
-				
-				submit() {
-					const value = this.inputEl.value.trim();
-					console.log('[TaskMaster] Submitting value:', value);
-					this.submitted = true;
-					this.close();
-					this.resolve(value || null);
-				}
-				
-				onClose() {
-					console.log('[TaskMaster] Modal closing, submitted:', this.submitted);
-					if (!this.submitted) {
-						this.resolve(null);
-					}
-				}
-			}
-			
-			const modal = new TextPromptModal(this.plugin.app, message, defaultValue, resolve);
-			modal.open();
-		});
-	}
-
-	async confirmAction(title, message) {
-		return new Promise((resolve) => {
-			// Import Modal from obsidian
-			const { Modal } = require('obsidian');
-			
-			class ConfirmModal extends Modal {
-				constructor(app, title, message, resolve) {
-					super(app);
-					this.title = title;
-					this.message = message;
-					this.resolve = resolve;
-					this.resolved = false;
-				}
-				
-				onOpen() {
-					const { contentEl } = this;
-					contentEl.empty();
-					
-					contentEl.createEl('h3', { text: this.title });
-					contentEl.createEl('p', { text: this.message });
-					
-					const buttonDiv = contentEl.createDiv();
-					buttonDiv.style.cssText = 'display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;';
-					
-					const cancelBtn = buttonDiv.createEl('button', { text: 'Cancel' });
-					cancelBtn.onclick = () => {
-						this.resolved = true;
-						this.close();
-						this.resolve(false);
-					};
-					
-					const deleteBtn = buttonDiv.createEl('button', { text: 'Delete', cls: 'mod-warning' });
-					deleteBtn.onclick = () => {
-						this.resolved = true;
-						this.close();
-						this.resolve(true);
-					};
-					
-					// Focus cancel button by default
-					setTimeout(() => cancelBtn.focus(), 10);
-				}
-				
-				onClose() {
-					if (!this.resolved) {
-						this.resolve(false);
-					}
-				}
-			}
-			
-			const modal = new ConfirmModal(this.plugin.app, title, message, resolve);
-			modal.open();
-		});
-	}
-}
-
-// State Groups Manager Modal
-class StateGroupsManagerModal extends require('obsidian').Modal {
-	constructor(app, plugin, onClose) {
-		super(app);
-		this.plugin = plugin;
-		this.onCloseCallback = onClose;
-		this.logger = plugin.logger;
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		this.display();
-	}
-
-	onClose() {
-		if (this.onCloseCallback) {
-			this.onCloseCallback();
-		}
-	}
-
-	display() {
-		const { contentEl } = this;
-		contentEl.empty();
-		
-		// Header
-		const headerEl = contentEl.createEl('div');
-		headerEl.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--background-modifier-border);';
-		
-		headerEl.createEl('h2', { text: 'State Groups Manager' });
-		
-		const closeBtn = headerEl.createEl('button', { text: '×', cls: 'modal-close-button' });
-		closeBtn.style.cssText = 'background: none; border: none; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;';
-		closeBtn.onclick = () => this.close();
-		
-		// Add new group section
-		const addGroupSection = contentEl.createEl('div');
-		addGroupSection.style.cssText = 'margin-bottom: 20px; padding: 15px; background: var(--background-secondary); border-radius: 8px;';
-		
-		addGroupSection.createEl('h3', { text: 'Add New State Group' });
-		
-		const addGroupControls = addGroupSection.createEl('div');
-		addGroupControls.style.cssText = 'display: flex; gap: 10px; align-items: center; margin-top: 10px;';
-		
-		const groupNameInput = addGroupControls.createEl('input', { 
-			type: 'text', 
-			placeholder: 'Enter group name...' 
-		});
-		groupNameInput.style.cssText = 'flex: 1; padding: 8px 12px; border: 1px solid var(--background-modifier-border); border-radius: 4px;';
-		
-		const addBtn = addGroupControls.createEl('button', { text: '+ Add Group', cls: 'mod-cta' });
-		addBtn.onclick = async () => {
-			const groupName = groupNameInput.value.trim();
-			if (groupName) {
-				await this.createNewStateGroup(groupName);
-				groupNameInput.value = '';
-			}
-		};
-		
-		groupNameInput.addEventListener('keydown', (e) => {
-			if (e.key === 'Enter' && groupNameInput.value.trim()) {
-				addBtn.click();
-			}
-		});
-		
-		// Groups container
-		const groupsContainer = contentEl.createEl('div', { cls: 'taskmaster-groups-container' });
-		this.refreshStateGroupsList(groupsContainer);
-	}
-
-	refreshStateGroupsList(container) {
-		container.empty();
-		
-		Object.entries(this.plugin.settings.stateGroups).forEach(([groupId, groupData]) => {
-			const groupDiv = container.createDiv('taskmaster-state-group');
-			groupDiv.style.cssText = 'border: 1px solid var(--background-modifier-border); border-radius: 8px; margin: 12px 0; padding: 16px; background: var(--background-primary);';
-			
-			const headerDiv = groupDiv.createDiv('taskmaster-state-group-header');
-			headerDiv.style.cssText = 'display: flex; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--background-modifier-border);';
-			
-			const titleEl = headerDiv.createEl('h4', { text: groupData.name });
-			titleEl.style.cssText = 'margin: 0; flex: 1; color: var(--text-normal);';
-			
-			// Group actions
-			const groupActions = headerDiv.createDiv('taskmaster-group-actions');
-			groupActions.style.cssText = 'display: flex; gap: 8px;';
-			
-			const editBtn = groupActions.createEl('button', { text: 'Edit', cls: 'mod-cta' });
-			editBtn.style.cssText = 'padding: 4px 12px; font-size: 12px;';
-			editBtn.onclick = async () => {
-				await this.editStateGroup(groupId);
-			};
-			
-			const deleteBtn = groupActions.createEl('button', { text: 'Delete', cls: 'mod-warning' });
-			deleteBtn.style.cssText = 'padding: 4px 12px; font-size: 12px;';
-			deleteBtn.onclick = async () => {
-				try {
-					await this.deleteStateGroup(groupId);
-				} catch (error) {
-					console.error('[TaskMaster] Error in deleteStateGroup:', error);
-					new Notice('Error deleting state group: ' + error.message);
-				}
-			};
-			
-			const statesDiv = groupDiv.createDiv('taskmaster-states-list');
-			statesDiv.style.cssText = 'padding-left: 16px;';
-			
-			// Add state section
-			const addStateDiv = statesDiv.createDiv('taskmaster-add-state');
-			addStateDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; background: var(--background-secondary); border-radius: 4px;';
-			
-			const addStateControls = addStateDiv.createEl('div');
-			addStateControls.style.cssText = 'display: flex; gap: 8px; align-items: center;';
-			
-			const stateNameInput = addStateControls.createEl('input', { 
-				type: 'text', 
-				placeholder: 'New state name...' 
-			});
-			stateNameInput.style.cssText = 'flex: 1; padding: 6px 10px; font-size: 13px; border: 1px solid var(--background-modifier-border); border-radius: 3px;';
-			
-			const addStateBtn = addStateControls.createEl('button', { text: '+ Add', cls: 'mod-cta' });
-			addStateBtn.style.cssText = 'padding: 6px 12px; font-size: 12px;';
-			addStateBtn.onclick = async () => {
-				const stateName = stateNameInput.value.trim();
-				if (stateName) {
-					await this.addNewState(groupId, stateName);
-					stateNameInput.value = '';
-				}
-			};
-			
-			stateNameInput.addEventListener('keydown', (e) => {
-				if (e.key === 'Enter' && stateNameInput.value.trim()) {
-					addStateBtn.click();
-				}
-			});
-			
-			// List existing states
-			groupData.states.forEach((state, index) => {
-				const stateDiv = statesDiv.createDiv('taskmaster-state-item');
-				stateDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; margin: 6px 0; padding: 8px; border-radius: 4px; background: var(--background-secondary);';
-				
-				const colorIndicator = stateDiv.createDiv('taskmaster-state-color');
-				colorIndicator.style.cssText = `
-					width: 16px; 
-					height: 16px; 
-					border-radius: 50%; 
-					background-color: ${state.color};
-					border: 1px solid var(--background-modifier-border);
-					flex-shrink: 0;
-				`;
-				
-				const nameEl = stateDiv.createSpan({ text: state.name, cls: 'taskmaster-state-name' });
-				nameEl.style.cssText = 'font-weight: 500; color: var(--text-normal);';
-				
-				const orderEl = stateDiv.createSpan({ text: `(${state.order})`, cls: 'taskmaster-state-order' });
-				orderEl.style.cssText = 'color: var(--text-muted); font-size: 12px;';
-				
-				// State actions
-				const stateActions = stateDiv.createDiv('taskmaster-state-actions');
-				stateActions.style.cssText = 'margin-left: auto; display: flex; gap: 4px;';
-				
-				const editStateBtn = stateActions.createEl('button', { text: 'Edit', cls: 'mod-small' });
-				editStateBtn.style.cssText = 'padding: 2px 8px; font-size: 11px;';
-				editStateBtn.onclick = async () => {
-					await this.editState(groupId, index);
-				};
-				
-				const deleteStateBtn = stateActions.createEl('button', { text: 'Delete', cls: 'mod-small mod-warning' });
-				deleteStateBtn.style.cssText = 'padding: 2px 8px; font-size: 11px;';
-				deleteStateBtn.onclick = async () => {
-					try {
-						await this.deleteState(groupId, index);
-					} catch (error) {
-						console.error('[TaskMaster] Error in deleteState:', error);
-						new Notice('Error deleting state: ' + error.message);
-					}
-				};
-			});
-		});
-	}
-
-	async createNewStateGroup(groupName) {
-		console.log('[TaskMaster] createNewStateGroup called with:', groupName);
-		
-		const groupId = groupName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-		
-		// Check if group already exists
-		if (this.plugin.settings.stateGroups[groupId]) {
-			new Notice('A group with this name already exists!');
-			return;
-		}
-		
-		// Create new group with default state
-		this.plugin.settings.stateGroups[groupId] = {
-			id: groupId,
-			name: groupName,
-			states: [
-				{ id: 'new-state', name: 'New State', color: '#666666', order: 0 }
-			]
-		};
-		
-		await this.plugin.saveSettings();
-		this.display(); // Refresh the modal
-		new Notice(`State group "${groupName}" created!`);
-	}
-
-	async editStateGroup(groupId) {
-		const groupData = this.plugin.settings.stateGroups[groupId];
-		const newName = await this.promptForText('Enter new group name:', groupData.name);
-		if (!newName || newName === groupData.name) return;
-		
-		groupData.name = newName;
-		await this.plugin.saveSettings();
-		this.display();
-		new Notice('Group name updated!');
-	}
-
-	async deleteStateGroup(groupId) {
-		const groupData = this.plugin.settings.stateGroups[groupId];
-		const confirmed = await this.confirmAction(`Delete group "${groupData.name}"?`, 'This will permanently delete the group and all its states.');
-		
-		if (!confirmed) return;
-		
-		// Don't allow deleting the default group if it's the only one
-		if (groupId === 'default' && Object.keys(this.plugin.settings.stateGroups).length === 1) {
-			new Notice('Cannot delete the last remaining group!');
-			return;
-		}
-		
-		delete this.plugin.settings.stateGroups[groupId];
-		
-		// If we deleted the default group, set a new default
-		if (this.plugin.settings.defaultStateGroup === groupId) {
-			this.plugin.settings.defaultStateGroup = Object.keys(this.plugin.settings.stateGroups)[0];
-		}
-		
-		await this.plugin.saveSettings();
-		this.display();
-		new Notice('Group deleted!');
-	}
-
-	async addNewState(groupId, stateName) {
-		const stateId = stateName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-		const group = this.plugin.settings.stateGroups[groupId];
-		
-		// Check if state already exists in this group
-		if (group.states.find(s => s.id === stateId)) {
-			new Notice('A state with this name already exists in this group!');
-			return;
-		}
-		
-		// Add new state
-		const newOrder = Math.max(...group.states.map(s => s.order)) + 1;
-		group.states.push({
-			id: stateId,
-			name: stateName,
-			color: '#666666',
-			order: newOrder
-		});
-		
-		await this.plugin.saveSettings();
-		this.display();
-		new Notice(`State "${stateName}" added!`);
-	}
-
-	async editState(groupId, stateIndex) {
-		const group = this.plugin.settings.stateGroups[groupId];
-		const state = group.states[stateIndex];
-		
-		const newName = await this.promptForText('Enter new state name:', state.name);
-		if (!newName || newName === state.name) return;
-		
-		state.name = newName;
-		state.id = newName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-		
-		await this.plugin.saveSettings();
-		this.display();
-		new Notice('State updated!');
-	}
-
-	async deleteState(groupId, stateIndex) {
 		const group = this.plugin.settings.stateGroups[groupId];
 		const state = group.states[stateIndex];
 		
@@ -991,6 +477,7 @@ class StateGroupsManagerModal extends require('obsidian').Modal {
 
 	async promptForText(message, defaultValue = '') {
 		return new Promise((resolve) => {
+			// Import Modal from obsidian
 			const { Modal } = require('obsidian');
 			
 			class TextPromptModal extends Modal {
@@ -999,7 +486,6 @@ class StateGroupsManagerModal extends require('obsidian').Modal {
 					this.message = message;
 					this.defaultValue = defaultValue;
 					this.resolve = resolve;
-					this.submitted = false;
 				}
 				
 				onOpen() {
@@ -1033,6 +519,7 @@ class StateGroupsManagerModal extends require('obsidian').Modal {
 						}
 					});
 					
+					// Focus and select text after a brief delay
 					setTimeout(() => {
 						this.inputEl.focus();
 						this.inputEl.select();
@@ -1041,7 +528,6 @@ class StateGroupsManagerModal extends require('obsidian').Modal {
 				
 				submit() {
 					const value = this.inputEl.value.trim();
-					this.submitted = true;
 					this.close();
 					this.resolve(value || null);
 				}
@@ -1053,13 +539,14 @@ class StateGroupsManagerModal extends require('obsidian').Modal {
 				}
 			}
 			
-			const modal = new TextPromptModal(this.app, message, defaultValue, resolve);
+			const modal = new TextPromptModal(this.plugin.app, message, defaultValue, resolve);
 			modal.open();
 		});
 	}
 
 	async confirmAction(title, message) {
 		return new Promise((resolve) => {
+			// Import Modal from obsidian
 			const { Modal } = require('obsidian');
 			
 			class ConfirmModal extends Modal {
@@ -1068,7 +555,6 @@ class StateGroupsManagerModal extends require('obsidian').Modal {
 					this.title = title;
 					this.message = message;
 					this.resolve = resolve;
-					this.resolved = false;
 				}
 				
 				onOpen() {
@@ -1083,18 +569,17 @@ class StateGroupsManagerModal extends require('obsidian').Modal {
 					
 					const cancelBtn = buttonDiv.createEl('button', { text: 'Cancel' });
 					cancelBtn.onclick = () => {
-						this.resolved = true;
 						this.close();
 						this.resolve(false);
 					};
 					
 					const deleteBtn = buttonDiv.createEl('button', { text: 'Delete', cls: 'mod-warning' });
 					deleteBtn.onclick = () => {
-						this.resolved = true;
 						this.close();
 						this.resolve(true);
 					};
 					
+					// Focus cancel button by default
 					setTimeout(() => cancelBtn.focus(), 10);
 				}
 				
@@ -1105,7 +590,7 @@ class StateGroupsManagerModal extends require('obsidian').Modal {
 				}
 			}
 			
-			const modal = new ConfirmModal(this.app, title, message, resolve);
+			const modal = new ConfirmModal(this.plugin.app, title, message, resolve);
 			modal.open();
 		});
 	}

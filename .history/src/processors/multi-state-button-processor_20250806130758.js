@@ -288,7 +288,7 @@ class MultiStateButtonProcessor {
 		button.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
-			this.handleButtonClick(button, buttonId, state.id, groupId_safe, stateGroupData, ctx);
+			this.handleButtonClick(button, buttonId, state.id, groupId, stateGroup, ctx);
 		});
 	}
 
@@ -298,10 +298,10 @@ class MultiStateButtonProcessor {
 	 * @param {string} buttonId - Button identifier
 	 * @param {string} currentStateId - Current state ID
 	 * @param {string} groupId - State group ID
-	 * @param {Object} stateGroupData - State group data containing the states
+	 * @param {TaskStateGroup} stateGroup - State group containing the states
 	 * @param {any} ctx - Processing context
 	 */
-	async handleButtonClick(button, buttonId, currentStateId, groupId, stateGroupData, ctx) {
+	async handleButtonClick(button, buttonId, currentStateId, groupId, stateGroup, ctx) {
 		this.logger.debug(`Button clicked: ${buttonId}, current state: ${currentStateId}, group: ${groupId}`);
 		
 		try {
@@ -309,10 +309,7 @@ class MultiStateButtonProcessor {
 			button.classList.add('changing');
 			
 			// Get next state
-			const currentIndex = stateGroupData.states.findIndex(s => s.id === currentStateId);
-			const nextIndex = (currentIndex + 1) % stateGroupData.states.length;
-			const nextState = stateGroupData.states[nextIndex];
-			
+			const nextState = stateGroup.getNextState(currentStateId);
 			if (!nextState) {
 				this.logger.error('No next state found');
 				return;

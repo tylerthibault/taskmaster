@@ -683,7 +683,6 @@ class TaskMasterSettingTab extends PluginSettingTab {
 			
 			const modal = new ConfirmModal(this.plugin.app, title, message, resolve);
 			modal.open();
-		});
 	}
 }
 

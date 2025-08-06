@@ -1,0 +1,625 @@
+/**
+ * TaskMaster Plugin - Working version with inline processor
+ */
+
+const { Plugin, PluginSettingTab, Setting, Notice } = require('obsidian');
+
+// Default settings
+const DEFAULT_SETTINGS = {
+	debugMode: true,
+	stateGroups: {
+		'default': {
+			id: 'default',
+			name: 'Default',
+			states: [
+				{ id: 'todo', name: 'To Do', color: '#e74c3c', order: 0 },
+				{ id: 'in-progress', name: 'In Progress', color: '#f39c12', order: 1 },
+				{ id: 'done', name: 'Done', color: '#27ae60', order: 2 }
+			]
+		}
+	},
+	people: {},
+	defaultStateGroup: 'default',
+	timeTrackingEnabled: true,
+	autoSave: true,
+	theme: 'default'
+};
+
+// Logger utility
+class Logger {
+	constructor(debugMode = false) {
+		this.debugMode = debugMode;
+		this.prefix = '[TaskMaster]';
+	}
+
+	log(...args) {
+		console.log(this.prefix, ...args);
+	}
+
+	error(...args) {
+		console.error(this.prefix, '[ERROR]', ...args);
+	}
+
+	debug(...args) {
+		if (this.debugMode) {
+			console.log(this.prefix, '[DEBUG]', ...args);
+		}
+	}
+
+	methodEntry(className, methodName, params) {
+		if (this.debugMode) {
+			console.log(this.prefix, `[${className}::${methodName}]`, params);
+		}
+	}
+
+	warn(...args) {
+		console.warn(this.prefix, '[WARN]', ...args);
+	}
+
+	setDebugMode(debugMode) {
+		this.debugMode = debugMode;
+	}
+}
+
+// Simple Multi-State Button Processor
+class MultiStateButtonProcessor {
+	constructor(app, settings, logger) {
+		this.app = app;
+		this.settings = settings;
+		this.logger = logger;
+		this.buttonRegex = /\{\{multi-state-button:([^:]+):([^}]+)\}\}/g;
+	}
+
+	processInlineButtons(el, ctx) {
+		try {
+			const walker = document.createTreeWalker(
+				el,
+				NodeFilter.SHOW_TEXT,
+				null,
+				false
+			);
+
+			const textNodes = [];
+			let node;
+			while (node = walker.nextNode()) {
+				if (this.buttonRegex.test(node.textContent)) {
+					textNodes.push(node);
+				}
+			}
+
+			textNodes.forEach(textNode => {
+				this.processTextNode(textNode, ctx);
+			});
+		} catch (error) {
+			this.logger.error('Error processing inline buttons:', error);
+		}
+	}
+
+	processTextNode(textNode, ctx) {
+		const text = textNode.textContent;
+		const parent = textNode.parentNode;
+		
+		if (!parent) return;
+		
+		const fragment = document.createDocumentFragment();
+		let lastIndex = 0;
+		let match;
+		
+		this.buttonRegex.lastIndex = 0;
+		
+		while ((match = this.buttonRegex.exec(text)) !== null) {
+			const [fullMatch, buttonId, currentState] = match;
+			
+			if (match.index > lastIndex) {
+				const textBefore = text.substring(lastIndex, match.index);
+				fragment.appendChild(document.createTextNode(textBefore));
+			}
+			
+			this.createButton(fragment, buttonId, currentState, ctx);
+			
+			lastIndex = match.index + fullMatch.length;
+		}
+		
+		if (lastIndex < text.length) {
+			const textAfter = text.substring(lastIndex);
+			fragment.appendChild(document.createTextNode(textAfter));
+		}
+		
+		parent.replaceChild(fragment, textNode);
+	}
+
+	createButton(container, buttonId, currentState, ctx) {
+		const stateGroupData = this.settings.stateGroups[this.settings.defaultStateGroup];
+		if (!stateGroupData) {
+			this.logger.error('No default state group found');
+			container.appendChild(document.createTextNode(`{{multi-state-button:${buttonId}:${currentState}}}`));
+			return;
+		}
+
+		let state = stateGroupData.states.find(s => s.id === currentState);
+		if (!state) {
+			state = stateGroupData.states[0];
+			if (!state) {
+				this.logger.error('No states found in state group');
+				container.appendChild(document.createTextNode(`{{multi-state-button:${buttonId}:${currentState}}}`));
+				return;
+			}
+		}
+		
+		const button = document.createElement('button');
+		button.textContent = state.name;
+		button.className = 'taskmaster-button';
+		button.setAttribute('data-button-id', buttonId);
+		button.setAttribute('data-state', state.id);
+		
+		// Style the button
+		button.style.cssText = `
+			background-color: ${state.color}; 
+			color: ${this.getContrastColor(state.color)}; 
+			padding: 4px 12px; 
+			margin: 2px; 
+			border: 1px solid #ccc; 
+			border-radius: 6px; 
+			cursor: pointer;
+			font-size: 0.85em;
+			font-weight: 500;
+		`;
+		
+		button.addEventListener('click', async (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			await this.handleButtonClick(button, buttonId, state.id, stateGroupData, ctx);
+		});
+		
+		container.appendChild(button);
+	}
+
+	async handleButtonClick(button, buttonId, currentStateId, stateGroupData, ctx) {
+		try {
+			// Find next state
+			const currentIndex = stateGroupData.states.findIndex(s => s.id === currentStateId);
+			const nextIndex = (currentIndex + 1) % stateGroupData.states.length;
+			const nextState = stateGroupData.states[nextIndex];
+			
+			if (!nextState) {
+				this.logger.error('No next state found');
+				return;
+			}
+			
+			// Update button appearance
+			button.textContent = nextState.name;
+			button.setAttribute('data-state', nextState.id);
+			button.style.backgroundColor = nextState.color;
+			button.style.color = this.getContrastColor(nextState.color);
+			
+			// Update source file
+			await this.updateButtonInSource(buttonId, currentStateId, nextState.id, ctx);
+			
+		} catch (error) {
+			this.logger.error('Error handling button click:', error);
+		}
+	}
+
+	async updateButtonInSource(buttonId, oldState, newState, ctx) {
+		if (!ctx.sourcePath) {
+			this.logger.warn('No source path available for button update');
+			return;
+		}
+		
+		try {
+			const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
+			if (!file) {
+				this.logger.error('Source file not found:', ctx.sourcePath);
+				return;
+			}
+			
+			const content = await this.app.vault.read(file);
+			const oldSyntax = `{{multi-state-button:${buttonId}:${oldState}}}`;
+			const newSyntax = `{{multi-state-button:${buttonId}:${newState}}}`;
+			
+			const newContent = content.replace(oldSyntax, newSyntax);
+			
+			if (newContent !== content) {
+				await this.app.vault.modify(file, newContent);
+				this.logger.debug('Source file updated successfully');
+			} else {
+				this.logger.warn('Button syntax not found in source file');
+			}
+		} catch (error) {
+			this.logger.error('Error updating source file:', error);
+		}
+	}
+
+	getContrastColor(backgroundColor) {
+		const hex = backgroundColor.replace('#', '');
+		const r = parseInt(hex.substr(0, 2), 16);
+		const g = parseInt(hex.substr(2, 2), 16);
+		const b = parseInt(hex.substr(4, 2), 16);
+		const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+		return luminance > 0.5 ? 'black' : 'white';
+	}
+}
+
+// Settings Tab
+class TaskMasterSettingTab extends PluginSettingTab {
+	constructor(app, plugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display() {
+		const { containerEl } = this;
+		containerEl.empty();
+		containerEl.createEl('h2', { text: 'TaskMaster Settings' });
+
+		new Setting(containerEl)
+			.setName('Debug Mode')
+			.setDesc('Enable debug logging')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.debugMode)
+				.onChange(async (value) => {
+					this.plugin.settings.debugMode = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// State Groups Section
+		containerEl.createEl('h3', { text: 'State Groups' });
+		
+		// Add new state group button
+		new Setting(containerEl)
+			.setName('Add New State Group')
+			.setDesc('Create a new group of states for your buttons')
+			.addButton(button => button
+				.setButtonText('+ Add Group')
+				.onClick(() => {
+					this.createNewStateGroup();
+				}));
+		
+		const groupsContainer = containerEl.createDiv('taskmaster-state-groups-container');
+		this.refreshStateGroupsList(groupsContainer);
+	}
+
+	refreshStateGroupsList(container) {
+		container.empty();
+		
+		Object.entries(this.plugin.settings.stateGroups).forEach(([groupId, groupData]) => {
+			const groupDiv = container.createDiv('taskmaster-state-group');
+			
+			const headerDiv = groupDiv.createDiv('taskmaster-state-group-header');
+			headerDiv.createEl('h4', { text: groupData.name });
+			
+			// Group actions
+			const groupActions = headerDiv.createDiv('taskmaster-group-actions');
+			groupActions.style.cssText = 'display: inline-flex; gap: 8px; margin-left: 10px;';
+			
+			groupActions.createEl('button', { 
+				text: 'Edit', 
+				cls: 'mod-cta' 
+			}).onclick = () => this.editStateGroup(groupId);
+			
+			groupActions.createEl('button', { 
+				text: 'Delete', 
+				cls: 'mod-warning' 
+			}).onclick = () => this.deleteStateGroup(groupId);
+			
+			const statesDiv = groupDiv.createDiv('taskmaster-states-list');
+			
+			// Add state button
+			const addStateDiv = statesDiv.createDiv('taskmaster-add-state');
+			addStateDiv.createEl('button', { 
+				text: '+ Add State',
+				cls: 'mod-cta' 
+			}).onclick = () => this.addNewState(groupId);
+			
+			// List existing states
+			groupData.states.forEach((state, index) => {
+				const stateDiv = statesDiv.createDiv('taskmaster-state-item');
+				stateDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; margin: 4px 0; padding: 4px;';
+				
+				const colorIndicator = stateDiv.createDiv('taskmaster-state-color');
+				colorIndicator.style.cssText = `
+					width: 16px; 
+					height: 16px; 
+					border-radius: 50%; 
+					background-color: ${state.color};
+					border: 1px solid #ccc;
+				`;
+				
+				stateDiv.createSpan({ text: state.name, cls: 'taskmaster-state-name' });
+				stateDiv.createSpan({ text: `(${state.order})`, cls: 'taskmaster-state-order' });
+				
+				// State actions
+				const stateActions = stateDiv.createDiv('taskmaster-state-actions');
+				stateActions.style.cssText = 'margin-left: auto; display: flex; gap: 4px;';
+				
+				stateActions.createEl('button', { 
+					text: 'Edit',
+					cls: 'mod-small'
+				}).onclick = () => this.editState(groupId, index);
+				
+				stateActions.createEl('button', { 
+					text: 'Delete',
+					cls: 'mod-small mod-warning'
+				}).onclick = () => this.deleteState(groupId, index);
+			});
+		});
+	}
+
+	async createNewStateGroup() {
+		const groupName = await this.promptForText('Enter group name:', 'New Group');
+		if (!groupName) return;
+		
+		const groupId = groupName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+		
+		// Check if group already exists
+		if (this.plugin.settings.stateGroups[groupId]) {
+			new Notice('A group with this name already exists!');
+			return;
+		}
+		
+		// Create new group with default state
+		this.plugin.settings.stateGroups[groupId] = {
+			id: groupId,
+			name: groupName,
+			states: [
+				{ id: 'new-state', name: 'New State', color: '#666666', order: 0 }
+			]
+		};
+		
+		await this.plugin.saveSettings();
+		this.display(); // Refresh the interface
+		new Notice(`State group "${groupName}" created!`);
+	}
+
+	async editStateGroup(groupId) {
+		const groupData = this.plugin.settings.stateGroups[groupId];
+		const newName = await this.promptForText('Enter new group name:', groupData.name);
+		if (!newName || newName === groupData.name) return;
+		
+		groupData.name = newName;
+		await this.plugin.saveSettings();
+		this.display();
+		new Notice('Group name updated!');
+	}
+
+	async deleteStateGroup(groupId) {
+		const groupData = this.plugin.settings.stateGroups[groupId];
+		const confirmed = await this.confirmAction(`Delete group "${groupData.name}"?`, 'This will permanently delete the group and all its states.');
+		if (!confirmed) return;
+		
+		// Don't allow deleting the default group if it's the only one
+		if (groupId === 'default' && Object.keys(this.plugin.settings.stateGroups).length === 1) {
+			new Notice('Cannot delete the last remaining group!');
+			return;
+		}
+		
+		delete this.plugin.settings.stateGroups[groupId];
+		
+		// If we deleted the default group, set a new default
+		if (this.plugin.settings.defaultStateGroup === groupId) {
+			this.plugin.settings.defaultStateGroup = Object.keys(this.plugin.settings.stateGroups)[0];
+		}
+		
+		await this.plugin.saveSettings();
+		this.display();
+		new Notice('Group deleted!');
+	}
+
+	async addNewState(groupId) {
+		const stateName = await this.promptForText('Enter state name:', 'New State');
+		if (!stateName) return;
+		
+		const stateId = stateName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+		const group = this.plugin.settings.stateGroups[groupId];
+		
+		// Check if state already exists in this group
+		if (group.states.find(s => s.id === stateId)) {
+			new Notice('A state with this name already exists in this group!');
+			return;
+		}
+		
+		// Add new state
+		const newOrder = Math.max(...group.states.map(s => s.order)) + 1;
+		group.states.push({
+			id: stateId,
+			name: stateName,
+			color: '#666666',
+			order: newOrder
+		});
+		
+		await this.plugin.saveSettings();
+		this.display();
+		new Notice(`State "${stateName}" added!`);
+	}
+
+	async editState(groupId, stateIndex) {
+		const group = this.plugin.settings.stateGroups[groupId];
+		const state = group.states[stateIndex];
+		
+		const newName = await this.promptForText('Enter new state name:', state.name);
+		if (!newName || newName === state.name) return;
+		
+		state.name = newName;
+		state.id = newName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+		
+		await this.plugin.saveSettings();
+		this.display();
+		new Notice('State updated!');
+	}
+
+	async deleteState(groupId, stateIndex) {
+		const group = this.plugin.settings.stateGroups[groupId];
+		const state = group.states[stateIndex];
+		
+		// Don't allow deleting the last state
+		if (group.states.length === 1) {
+			new Notice('Cannot delete the last state in a group!');
+			return;
+		}
+		
+		const confirmed = await this.confirmAction(`Delete state "${state.name}"?`, 'This action cannot be undone.');
+		if (!confirmed) return;
+		
+		group.states.splice(stateIndex, 1);
+		
+		// Reorder remaining states
+		group.states.forEach((s, i) => s.order = i);
+		
+		await this.plugin.saveSettings();
+		this.display();
+		new Notice('State deleted!');
+	}
+
+	async promptForText(message, defaultValue = '') {
+		return new Promise((resolve) => {
+			const modal = new (class extends this.plugin.app.constructor.Modal {
+				constructor(app) {
+					super(app);
+				}
+				
+				onOpen() {
+					const { contentEl } = this;
+					contentEl.createEl('h3', { text: message });
+					
+					const input = contentEl.createEl('input', { 
+						type: 'text', 
+						value: defaultValue 
+					});
+					input.style.cssText = 'width: 100%; margin: 10px 0; padding: 8px;';
+					input.focus();
+					input.select();
+					
+					const buttonDiv = contentEl.createDiv();
+					buttonDiv.style.cssText = 'display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;';
+					
+					buttonDiv.createEl('button', { text: 'Cancel' }).onclick = () => {
+						this.close();
+						resolve(null);
+					};
+					
+					buttonDiv.createEl('button', { text: 'OK', cls: 'mod-cta' }).onclick = () => {
+						this.close();
+						resolve(input.value.trim());
+					};
+					
+					input.addEventListener('keydown', (e) => {
+						if (e.key === 'Enter') {
+							this.close();
+							resolve(input.value.trim());
+						} else if (e.key === 'Escape') {
+							this.close();
+							resolve(null);
+						}
+					});
+				}
+			})(this.plugin.app);
+			
+			modal.open();
+		});
+	}
+
+	async confirmAction(title, message) {
+		return new Promise((resolve) => {
+			const modal = new (class extends this.plugin.app.constructor.Modal {
+				constructor(app) {
+					super(app);
+				}
+				
+				onOpen() {
+					const { contentEl } = this;
+					contentEl.createEl('h3', { text: title });
+					contentEl.createEl('p', { text: message });
+					
+					const buttonDiv = contentEl.createDiv();
+					buttonDiv.style.cssText = 'display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;';
+					
+					buttonDiv.createEl('button', { text: 'Cancel' }).onclick = () => {
+						this.close();
+						resolve(false);
+					};
+					
+					buttonDiv.createEl('button', { text: 'Delete', cls: 'mod-warning' }).onclick = () => {
+						this.close();
+						resolve(true);
+					};
+				}
+			})(this.plugin.app);
+			
+			modal.open();
+		});
+	}
+}
+
+// Main Plugin Class
+class TaskMasterPlugin extends Plugin {
+	async onload() {
+		console.log('[TaskMaster] INLINE PROCESSOR VERSION - Starting load...');
+		
+		try {
+			await this.loadSettings();
+			console.log('[TaskMaster] Settings loaded');
+			
+			this.logger = new Logger(this.settings.debugMode);
+			this.logger.log('TaskMaster progressive plugin loading...');
+
+			// Initialize processor
+			this.multiStateProcessor = new MultiStateButtonProcessor(this.app, this.settings, this.logger);
+			console.log('[TaskMaster] Inline processor created');
+
+			// Register processor (inline only for now)
+			this.registerMarkdownPostProcessor((el, ctx) => {
+				this.multiStateProcessor.processInlineButtons(el, ctx);
+			});
+			console.log('[TaskMaster] Post processor registered');
+
+			this.addSettingTab(new TaskMasterSettingTab(this.app, this));
+			console.log('[TaskMaster] Settings tab added');
+
+			this.logger.log('TaskMaster inline processor plugin loaded successfully!');
+			console.log('[TaskMaster] INLINE PROCESSOR VERSION - Load complete!');
+			
+			// Show success notice
+			new Notice('TaskMaster inline processor version loaded!');
+			
+		} catch (error) {
+			console.error('[TaskMaster] FATAL ERROR during load:', error);
+			console.error('[TaskMaster] Stack trace:', error.stack);
+			new Notice('TaskMaster failed to load - check console for details');
+			throw error;
+		}
+	}
+
+	onunload() {
+		console.log('[TaskMaster] INLINE PROCESSOR VERSION - Unloading...');
+		this.logger?.log('TaskMaster progressive plugin unloaded');
+	}
+
+	async loadSettings() {
+		const loadedData = await this.loadData();
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+		
+		if (!this.settings.stateGroups || Object.keys(this.settings.stateGroups).length === 0) {
+			this.settings.stateGroups = DEFAULT_SETTINGS.stateGroups;
+		}
+		
+		if (!this.settings.people) {
+			this.settings.people = {};
+		}
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+		
+		// Update logger debug mode
+		if (this.logger) {
+			this.logger.setDebugMode(this.settings.debugMode);
+		}
+		
+		// Notify processors of settings changes
+		if (this.multiStateProcessor) {
+			this.multiStateProcessor.updateSettings(this.settings);
+		}
+	}
+}
+
+module.exports = TaskMasterPlugin;
