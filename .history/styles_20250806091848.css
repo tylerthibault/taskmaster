@@ -1,0 +1,148 @@
+/* TaskMaster Plugin Styles */
+
+/* Multi-State Button Styling */
+.taskmaster-state-button {
+  display: inline-block;
+  margin: 2px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.taskmaster-state-button:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.taskmaster-state-button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Inline Button Container */
+.taskmaster-inline-button {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Settings UI Styling */
+.taskmaster-state-group {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 12px 0;
+  background: var(--background-secondary);
+}
+
+.taskmaster-person {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  background: var(--background-secondary);
+}
+
+/* Progress Bars */
+.taskmaster-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.taskmaster-progress-fill {
+  height: 100%;
+  background: var(--interactive-accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Time Tracking */
+.taskmaster-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.taskmaster-timer.active {
+  color: var(--interactive-accent);
+  font-weight: 500;
+}
+
+/* Assignment Indicators */
+.taskmaster-assignee {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--background-modifier-border);
+  border-radius: 12px;
+  font-size: 0.8em;
+  margin: 0 2px;
+}
+
+.taskmaster-assignee.with-avatar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.taskmaster-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Dashboard Styles */
+.taskmaster-dashboard {
+  padding: 20px;
+}
+
+.taskmaster-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.taskmaster-dashboard-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.taskmaster-dashboard-card h3 {
+  margin: 0 0 12px 0;
+  color: var(--text-normal);
+}
+
+.taskmaster-metric {
+  font-size: 2em;
+  font-weight: bold;
+  color: var(--interactive-accent);
+  margin: 8px 0;
+}
+
+.taskmaster-metric-label {
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .taskmaster-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .taskmaster-state-button {
+    margin: 1px;
+    padding: 3px 6px;
+    font-size: 0.8em;
+  }
+}

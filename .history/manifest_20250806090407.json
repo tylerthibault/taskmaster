@@ -1,0 +1,11 @@
+{
+	"id": "taskmaster",
+	"name": "TaskMaster",
+	"version": "0.1.0",
+	"minAppVersion": "0.15.0",
+	"description": "Advanced task management with multi-state toggles, people assignment, time tracking, and project visualization for Obsidian.",
+	"author": "TaskMaster Team",
+	"authorUrl": "",
+	"fundingUrl": "",
+	"isDesktopOnly": false
+}
